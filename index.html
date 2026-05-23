@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kilo HQ</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    :root {
+      --accent: #00bfff;
+      --glow: rgba(0, 191, 255, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Share Tech Mono', monospace;
+      cursor: crosshair;
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 0;
+    }
+
+    /* ── HQ Badge ── */
+    #hq-badge {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    #hq-badge .title {
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: var(--accent);
+      opacity: 0.6;
+      text-transform: uppercase;
+    }
+
+    /* ── Music Controls ── */
+    #music-controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+    }
+
+    .music-button {
+      position: relative;
+      background: rgba(0, 0, 0, 0.7);
+      color: var(--accent);
+      padding: 9px 16px;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 8px rgba(0, 191, 255, 0.2), inset 0 0 8px rgba(0, 191, 255, 0.05);
+      user-select: none;
+      min-width: 150px;
+      text-align: left;
+    }
+
+    .music-button::before {
+      content: '▶';
+      margin-right: 8px;
+      font-size: 9px;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+
+    .music-button:hover {
+      background: rgba(0, 191, 255, 0.1);
+      box-shadow: 0 0 16px rgba(0, 191, 255, 0.5), inset 0 0 12px rgba(0, 191, 255, 0.1);
+      transform: translateX(3px);
+    }
+
+    .music-button.active {
+      background: rgba(0, 191, 255, 0.15);
+      box-shadow: 0 0 20px rgba(0, 191, 255, 0.7), inset 0 0 15px rgba(0, 191, 255, 0.15);
+      color: #fff;
+      border-color: #fff;
+    }
+
+    .music-button.active::before {
+      content: '■';
+      opacity: 1;
+      color: #00ff9f;
+    }
+
+    /* Volume slider */
+    #vol-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    #vol-wrap label {
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      opacity: 0.6;
+    }
+
+    #vol-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100px;
+      height: 2px;
+      background: rgba(0, 191, 255, 0.3);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    #vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* ── Color Buttons ── */
+    #color-buttons {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .color-button {
+      padding: 8px 16px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      font-weight: bold;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.6);
+      text-transform: uppercase;
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+
+    .color-button:hover {
+      transform: translateY(-3px);
+      filter: brightness(1.4);
+    }
+
+    .color-button.active-color {
+      transform: translateY(-3px);
+      filter: brightness(1.6);
+    }
+
+    .green  { color: #00ff00; border-color: rgba(0,255,0,0.4);   box-shadow: 0 0 12px rgba(0,255,0,0.4); }
+    .red    { color: #ff3333; border-color: rgba(255,50,50,0.4);  box-shadow: 0 0 12px rgba(255,50,50,0.4); }
+    .blue   { color: #00bfff; border-color: rgba(0,191,255,0.4);  box-shadow: 0 0 12px rgba(0,191,255,0.4); }
+    .purple { color: #cc55ff; border-color: rgba(180,0,255,0.4);  box-shadow: 0 0 12px rgba(180,0,255,0.4); }
+    .gold   { color: #ffd700; border-color: rgba(255,215,0,0.4);  box-shadow: 0 0 12px rgba(255,215,0,0.4); }
+    .rainbow { 
+      background: linear-gradient(90deg, #ff000033, #ff800033, #ffff0033, #00ff0033, #0080ff33, #8000ff33);
+      border-color: rgba(255,255,255,0.3);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255,255,255,0.3);
+    }
+
+    /* ── Now Playing indicator ── */
+    #now-playing {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 100;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    #now-playing.visible {
+      opacity: 0.7;
+    }
+
+    /* Pulsing dot */
+    #now-playing::before {
+      content: '● ';
+      color: #00ff9f;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="hq-badge">
+    <div class="title">Kilo HQ // Focus Station</div>
+  </div>
+
+  <div id="music-controls">
+    <button class="music-button" id="btn-gamma"   onclick="toggleTrack('gamma')">40Hz Gamma</button>
+    <button class="music-button" id="btn-alpha"   onclick="toggleTrack('alpha')">Alpha Wave</button>
+    <button class="music-button" id="btn-theta"   onclick="toggleTrack('theta')">Theta Drift</button>
+    <button class="music-button" id="btn-deep"    onclick="toggleTrack('deep')">Deep Focus</button>
+    <div id="vol-wrap">
+      <label>VOL</label>
+      <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.4" oninput="setVolume(this.value)">
+    </div>
+  </div>
+
+  <canvas id="matrix-canvas"></canvas>
+
+  <div id="now-playing"></div>
+
+  <div id="color-buttons">
+    <button class="color-button blue   active-color" data-color="#00bfff">Blue</button>
+    <button class="color-button green"               data-color="#00ff00">Green</button>
+    <button class="color-button red"                 data-color="#ff3333">Red</button>
+    <button class="color-button purple"              data-color="#cc55ff">Purple</button>
+    <button class="color-button gold"                data-color="#ffd700">Gold</button>
+    <button class="color-button rainbow">🌈</button>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────
+    //  MATRIX RAIN
+    // ─────────────────────────────────────────────
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx    = canvas.getContext('2d');
+    const fontSize = 14;
+    const chars = "フィリップクフィアトコフスキKWIATKOWSKIPHILIP".split("");
+
+    let drops = [];
+    let matrixColor  = "#00bfff";
+    let enableRainbow = false;
+
+    function setupCanvas() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const cols = Math.floor(canvas.width / fontSize);
+      drops = Array.from({ length: cols }, () => Math.random() * -50);
+    }
+
+    setupCanvas();
+    window.addEventListener('resize', setupCanvas);
+
+    function draw() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = fontSize + "px 'Share Tech Mono', monospace";
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+
+        if (enableRainbow) {
+          ctx.fillStyle = `hsl(${Math.floor(Math.random() * 360)}, 100%, 55%)`;
+        } else {
+          // bright lead character
+          ctx.fillStyle = drops[i] * fontSize < canvas.height * 0.3
+            ? '#ffffff'
+            : matrixColor;
+        }
+
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    setInterval(draw, 50);
+
+    // ─────────────────────────────────────────────
+    //  COLOR BUTTONS
+    // ─────────────────────────────────────────────
+    document.querySelectorAll('.color-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-button').forEach(b => b.classList.remove('active-color'));
+        btn.classList.add('active-color');
+
+        if (btn.classList.contains('rainbow')) {
+          enableRainbow = true;
+        } else {
+          enableRainbow = false;
+          matrixColor   = btn.dataset.color;
+          // update CSS accent var to match
+          document.documentElement.style.setProperty('--accent', btn.dataset.color);
+          document.documentElement.style.setProperty('--glow', btn.dataset.color + '99');
+        }
+      });
+    });
+
+    // ─────────────────────────────────────────────
+    //  WEB AUDIO ENGINE — no MP3 files needed
+    // ─────────────────────────────────────────────
+    let audioCtx    = null;
+    let masterGain  = null;
+    let activeNodes = [];  // currently running oscillators / nodes
+    let activeTrack = null;
+    let masterVolume = 0.4;
+
+    function getCtx() {
+      if (!audioCtx) {
+        audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
+        masterGain.connect(audioCtx.destination);
+      }
+      return audioCtx;
+    }
+
+    function stopAll() {
+      const now = audioCtx ? audioCtx.currentTime : 0;
+      activeNodes.forEach(n => {
+        try {
+          n.gain.gain.linearRampToValueAtTime(0, now + 0.8);
+          n.osc.stop(now + 0.8);
+        } catch(e) {}
+      });
+      activeNodes = [];
+    }
+
+    // Helper: create one oscillator with its own gain routed to masterGain
+    function makeOsc(freq, type = 'sine', gainVal = 0.4, panVal = 0) {
+      const ctx  = getCtx();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const pan  = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+
+      osc.type      = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + 1.2); // fade in
+
+      if (pan) {
+        pan.pan.setValueAtTime(panVal, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(pan);
+        pan.connect(masterGain);
+      } else {
+        osc.connect(gain);
+        gain.connect(masterGain);
+      }
+
+      osc.start();
+      return { osc, gain };
+    }
+
+    // ── Track definitions ──────────────────────────────────────────
+
+    function play_gamma() {
+      // 40Hz binaural: 200Hz left, 240Hz right → brain perceives 40Hz gamma beat
+      // Plus a gentle 40Hz sub pulse for atmosphere
+      const left  = makeOsc(200, 'sine', 0.35, -1);
+      const right = makeOsc(240, 'sine', 0.35,  1);
+      const sub   = makeOsc(40,  'sine', 0.12,  0);
+      activeNodes = [left, right, sub];
+    }
+
+    function play_alpha() {
+      // Alpha binaural 10Hz: 210Hz left, 220Hz right
+      // Layered with a soft 432Hz carrier for warmth
+      const left    = makeOsc(210, 'sine', 0.35, -1);
+      const right   = makeOsc(220, 'sine', 0.35,  1);
+      const carrier = makeOsc(432, 'sine', 0.08,  0);
+      activeNodes   = [left, right, carrier];
+    }
+
+    function play_theta() {
+      // Theta binaural 6Hz: 204Hz left, 210Hz right
+      // Deep drift — slightly detuned ambient layer
+      const left  = makeOsc(204, 'sine', 0.35, -1);
+      const right = makeOsc(210, 'sine', 0.35,  1);
+      const drone = makeOsc(528, 'sine', 0.06,  0);
+      activeNodes = [left, right, drone];
+    }
+
+    function play_deep() {
+      // Deep focus: 14Hz binaural (low beta/high alpha boundary)
+      // 174Hz left, 188Hz right — grounding frequency
+      const left   = makeOsc(174, 'sine', 0.38, -1);
+      const right  = makeOsc(188, 'sine', 0.38,  1);
+      const ground = makeOsc(174, 'sine', 0.10,  0); // mono ground
+      activeNodes  = [left, right, ground];
+    }
+
+    // ── Toggle logic ───────────────────────────────────────────────
+
+    const trackFns = {
+      gamma: play_gamma,
+      alpha: play_alpha,
+      theta: play_theta,
+      deep:  play_deep,
+    };
+
+    const trackNames = {
+      gamma: '40Hz Gamma Beat',
+      alpha: 'Alpha Wave 10Hz',
+      theta: 'Theta Drift 6Hz',
+      deep:  'Deep Focus 14Hz',
+    };
+
+    function toggleTrack(id) {
+      getCtx();
+
+      // If same track → stop
+      if (activeTrack === id) {
+        stopAll();
+        activeTrack = null;
+        setNowPlaying(null);
+        document.querySelectorAll('.music-button').forEach(b => b.classList.remove('active'));
+        return;
+      }
+
+      // Switch track
+      stopAll();
+      activeTrack = id;
+      trackFns[id]();
+
+      document.querySelectorAll('.music-button').forEach(b => b.classList.remove('active'));
+      document.getElementById('btn-' + id).classList.add('active');
+      setNowPlaying(trackNames[id]);
+    }
+
+    function setVolume(v) {
+      masterVolume = parseFloat(v);
+      if (masterGain) {
+        masterGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.1);
+      }
+    }
+
+    // ── Now playing label ──────────────────────────────────────────
+    const npEl = document.getElementById('now-playing');
+    let npTimeout;
+
+    function setNowPlaying(name) {
+      clearTimeout(npTimeout);
+      if (!name) {
+        npEl.classList.remove('visible');
+        return;
+      }
+      npEl.textContent = name;
+      // re-add the ::before via a trick — just keep textContent clean
+      npEl.classList.add('visible');
+    }
+  </script>
+</body>
+</html>
