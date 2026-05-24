@@ -403,7 +403,7 @@ let matrixColor  = "#00bfff";
 let enableRainbow = false;
 let rainbowHue   = 0;
 let beatIntensity = 0;
-let bursts       = [];
+let ripples      = [];
 
 function setupCanvas() {
   canvas.width  = window.innerWidth;
@@ -414,21 +414,10 @@ function setupCanvas() {
 setupCanvas();
 window.addEventListener('resize', setupCanvas);
 
-// ── Click burst ────────────────────────────────────────
+// ── Click ripple ──────────────────────────────────────
 canvas.addEventListener('click', e => {
-  const count = 26;
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
-    const speed = 2.5 + Math.random() * 5.5;
-    bursts.push({
-      x: e.clientX, y: e.clientY,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      char: chars[Math.floor(Math.random() * chars.length)],
-      life: 1.0,
-      decay: 0.016 + Math.random() * 0.024
-    });
-  }
+  const maxR = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
+  ripples.push({ x: e.clientX, y: e.clientY, radius: 0, maxRadius: maxR });
 });
 
 // ── Waveform visualizer ────────────────────────────────
@@ -476,13 +465,37 @@ function draw() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.font = fontSize + "px 'Share Tech Mono', monospace";
 
+  // Update ripples
+  for (let r = ripples.length - 1; r >= 0; r--) {
+    ripples[r].radius += 14;
+    if (ripples[r].radius > ripples[r].maxRadius) ripples.splice(r, 1);
+  }
+
   for (let i = 0; i < drops.length; i++) {
     const text = chars[Math.floor(Math.random() * chars.length)];
+    const cx   = i * fontSize;
+    const cy   = drops[i] * fontSize;
 
-    if (enableRainbow) {
+    // Check if this column is inside any ripple ring
+    let rippleBoost = 0;
+    for (const r of ripples) {
+      const dist      = Math.sqrt((cx - r.x) ** 2 + (cy - r.y) ** 2);
+      const ringWidth = 55;
+      const diff      = Math.abs(dist - r.radius);
+      if (diff < ringWidth) {
+        const fade = 1 - r.radius / r.maxRadius;       // dims as it expands
+        const edge = 1 - diff / ringWidth;              // sharp at ring center
+        rippleBoost = Math.max(rippleBoost, edge * fade);
+      }
+    }
+
+    if (rippleBoost > 0.01) {
+      // Blend from normal color to white based on boost strength
+      ctx.fillStyle = `rgba(255,255,255,${rippleBoost.toFixed(2)})`;
+    } else if (enableRainbow) {
       ctx.fillStyle = `hsl(${(rainbowHue + i * 3) % 360}, 100%, 55%)`;
     } else {
-      ctx.fillStyle = drops[i] < 3 ? '#ffffff' : matrixColor;
+      ctx.fillStyle = matrixColor;
     }
 
     ctx.fillText(text, i * fontSize, drops[i] * fontSize);
@@ -492,22 +505,6 @@ function draw() {
   }
 
   if (enableRainbow) rainbowHue = (rainbowHue + 0.5) % 360;
-
-  // Burst particles
-  ctx.font = (fontSize + 2) + "px 'Share Tech Mono', monospace";
-  for (let i = bursts.length - 1; i >= 0; i--) {
-    const p = bursts[i];
-    const alpha = Math.floor(p.life * 255).toString(16).padStart(2, '0');
-    ctx.fillStyle = enableRainbow
-      ? `hsla(${(rainbowHue + i * 15) % 360},100%,60%,${p.life})`
-      : matrixColor + alpha;
-    ctx.fillText(p.char, p.x, p.y);
-    p.x  += p.vx;
-    p.y  += p.vy;
-    p.vy += 0.15;
-    p.life -= p.decay;
-    if (p.life <= 0) bursts.splice(i, 1);
-  }
 
   drawVisualizer();
 }
