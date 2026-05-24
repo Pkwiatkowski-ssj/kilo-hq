@@ -349,7 +349,7 @@
 <div id="music-controls">
   <button class="music-button" id="btn-gamma" onclick="toggleTrack('gamma')">40Hz Gamma</button>
   <button class="music-button" id="btn-alpha" onclick="toggleTrack('alpha')">Alpha Wave</button>
-  <button class="music-button" id="btn-theta" onclick="toggleTrack('theta')">Theta Drift</button>
+  <button class="music-button" id="btn-theta" onclick="toggleTrack('theta')">Beta Focus</button>
   <button class="music-button" id="btn-deep"  onclick="toggleTrack('deep')">Deep Focus</button>
   <div id="vol-wrap">
     <label>VOL</label>
@@ -436,23 +436,34 @@ function drawVisualizer() {
   if (!analyser || !activeTrack || !waveData) return;
   analyser.getByteTimeDomainData(waveData);
 
+  const color  = enableRainbow ? `hsl(${rainbowHue},100%,65%)` : matrixColor;
+  const yBase  = canvas.height - 55;
+  const step   = 8; // sample every 8th point — much cleaner
+
+  // Build downsampled points
+  const pts = [];
+  for (let i = 0; i < waveData.length; i += step) {
+    pts.push({
+      x: (i / waveData.length) * canvas.width,
+      y: yBase + (waveData[i] / 128.0 - 1) * 45
+    });
+  }
+
   ctx.save();
   ctx.beginPath();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = enableRainbow
-    ? `hsla(${rainbowHue}, 100%, 65%, 0.45)`
-    : matrixColor + '55';
+  ctx.lineWidth   = 1;
+  ctx.strokeStyle = color + 'cc';
+  ctx.shadowBlur  = 6;
+  ctx.shadowColor = color;
 
-  const sliceWidth = canvas.width / waveData.length;
-  let x = 0;
-  const yBase = canvas.height - 55;
-
-  for (let i = 0; i < waveData.length; i++) {
-    const v = waveData[i] / 128.0;
-    const y = yBase + (v - 1) * 38;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    x += sliceWidth;
+  // Smooth bezier curves through midpoints
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i].x + pts[i + 1].x) / 2;
+    const my = (pts[i].y + pts[i + 1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
   }
+  ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
   ctx.stroke();
   ctx.restore();
 }
@@ -477,7 +488,7 @@ function draw() {
     ctx.fillText(text, i * fontSize, drops[i] * fontSize);
 
     if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-    drops[i] += speedBoost * (0.18 + Math.random() * 0.12);
+    drops[i]++;
   }
 
   if (enableRainbow) rainbowHue = (rainbowHue + 0.5) % 360;
@@ -499,10 +510,9 @@ function draw() {
   }
 
   drawVisualizer();
-  requestAnimationFrame(draw);
 }
 
-requestAnimationFrame(draw);
+setInterval(draw, 80);
 
 // ══════════════════════════════════════════════════════
 //  COLOR BUTTONS
@@ -600,14 +610,14 @@ function stopAll() {
 const trackDefs = {
   gamma: () => [makeOsc(200,'sine',0.35,-1), makeOsc(240,'sine',0.35,1),  makeOsc(40,'sine',0.12,0)],
   alpha: () => [makeOsc(210,'sine',0.35,-1), makeOsc(220,'sine',0.35,1),  makeOsc(432,'sine',0.08,0)],
-  theta: () => [makeOsc(204,'sine',0.35,-1), makeOsc(210,'sine',0.35,1),  makeOsc(528,'sine',0.06,0)],
+  theta: () => [makeOsc(200,'sine',0.35,-1), makeOsc(220,'sine',0.35,1),  makeOsc(100,'sine',0.08,0)],
   deep:  () => [makeOsc(174,'sine',0.38,-1), makeOsc(188,'sine',0.38,1),  makeOsc(174,'sine',0.10,0)],
 };
 
 const trackNames = {
   gamma: '40Hz Gamma Beat',
   alpha: 'Alpha Wave 10Hz',
-  theta: 'Theta Drift 6Hz',
+  theta: 'Beta Focus 20Hz',
   deep:  'Deep Focus 14Hz',
 };
 
