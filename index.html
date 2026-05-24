@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kilo HQ</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
     :root {
       --accent: #00bfff;
-      --glow: rgba(0, 191, 255, 0.6);
+      --glow: rgba(0,191,255,0.6);
+      --accent-rgb: 0,191,255;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: #000;
@@ -32,7 +29,33 @@
       z-index: 0;
     }
 
-    /* ── HQ Badge ── */
+    /* Scanlines */
+    #scanlines {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.08) 3px,
+        rgba(0,0,0,0.08) 4px
+      );
+    }
+
+    /* Vignette */
+    #vignette {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 11;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%);
+    }
+
+    /* HQ Badge */
     #hq-badge {
       position: fixed;
       top: 20px;
@@ -47,11 +70,26 @@
       font-size: 11px;
       letter-spacing: 6px;
       color: var(--accent);
-      opacity: 0.6;
+      opacity: 0.7;
       text-transform: uppercase;
+      transition: color 0.5s;
+      white-space: nowrap;
     }
 
-    /* ── Music Controls ── */
+    @keyframes glitch {
+      0%        { text-shadow: none; transform: skewX(0deg); }
+      10%       { text-shadow: 2px 0 #ff0080, -2px 0 #00ffff; transform: skewX(-4deg); }
+      20%       { text-shadow: -3px 0 #ff0080, 3px 0 #00ffff; transform: skewX(3deg); }
+      30%       { text-shadow: none; transform: skewX(0deg); }
+      38%       { text-shadow: 1px 0 #ff0080, -1px 0 #00ffff; }
+      42%, 100% { text-shadow: none; transform: skewX(0deg); }
+    }
+
+    #hq-badge.glitching .title {
+      animation: glitch 0.4s steps(1) forwards;
+    }
+
+    /* Music controls */
     #music-controls {
       position: fixed;
       top: 20px;
@@ -63,8 +101,7 @@
     }
 
     .music-button {
-      position: relative;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0,0,0,0.75);
       color: var(--accent);
       padding: 9px 16px;
       border: 1px solid var(--accent);
@@ -75,40 +112,39 @@
       cursor: pointer;
       text-transform: uppercase;
       transition: all 0.2s ease;
-      box-shadow: 0 0 8px rgba(0, 191, 255, 0.2), inset 0 0 8px rgba(0, 191, 255, 0.05);
+      box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.2);
       user-select: none;
-      min-width: 150px;
+      min-width: 155px;
       text-align: left;
     }
 
     .music-button::before {
-      content: '▶';
-      margin-right: 8px;
+      content: '▶ ';
       font-size: 9px;
       opacity: 0.5;
       transition: opacity 0.2s;
     }
 
     .music-button:hover {
-      background: rgba(0, 191, 255, 0.1);
-      box-shadow: 0 0 16px rgba(0, 191, 255, 0.5), inset 0 0 12px rgba(0, 191, 255, 0.1);
+      background: rgba(var(--accent-rgb), 0.1);
+      box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.5);
       transform: translateX(3px);
     }
 
     .music-button.active {
-      background: rgba(0, 191, 255, 0.15);
-      box-shadow: 0 0 20px rgba(0, 191, 255, 0.7), inset 0 0 15px rgba(0, 191, 255, 0.15);
+      background: rgba(var(--accent-rgb), 0.15);
+      box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.7), inset 0 0 15px rgba(var(--accent-rgb), 0.15);
       color: #fff;
       border-color: #fff;
     }
 
     .music-button.active::before {
-      content: '■';
+      content: '■ ';
       opacity: 1;
       color: #00ff9f;
     }
 
-    /* Volume slider */
+    /* Volume */
     #vol-wrap {
       display: flex;
       align-items: center;
@@ -123,17 +159,17 @@
       opacity: 0.6;
     }
 
-    #vol-slider {
+    input[type=range] {
       -webkit-appearance: none;
       appearance: none;
       width: 100px;
       height: 2px;
-      background: rgba(0, 191, 255, 0.3);
+      background: rgba(var(--accent-rgb), 0.3);
       border-radius: 2px;
       outline: none;
     }
 
-    #vol-slider::-webkit-slider-thumb {
+    input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
       width: 12px;
       height: 12px;
@@ -143,7 +179,77 @@
       box-shadow: 0 0 6px var(--accent);
     }
 
-    /* ── Color Buttons ── */
+    /* Right panel: clock + pomodoro */
+    #right-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    #clock {
+      font-size: 22px;
+      letter-spacing: 4px;
+      color: var(--accent);
+      opacity: 0.8;
+      transition: color 0.5s;
+    }
+
+    /* Pomodoro */
+    #pomodoro {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #pomodoro svg { transform: rotate(-90deg); }
+
+    #pomo-ring-bg {
+      fill: none;
+      stroke: rgba(var(--accent-rgb), 0.15);
+      stroke-width: 2.5;
+    }
+
+    #pomo-ring {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.5s;
+    }
+
+    #pomo-time {
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      opacity: 0.9;
+      margin-top: 4px;
+      transition: color 0.5s;
+    }
+
+    #pomo-mode {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--accent);
+      opacity: 0.5;
+      transition: color 0.5s;
+    }
+
+    #pomo-hint {
+      font-size: 8px;
+      letter-spacing: 1px;
+      color: var(--accent);
+      opacity: 0.2;
+      margin-top: 3px;
+    }
+
+    /* Color buttons */
     #color-buttons {
       position: fixed;
       bottom: 24px;
@@ -155,7 +261,7 @@
     }
 
     .color-button {
-      padding: 8px 16px;
+      padding: 8px 14px;
       border: 1px solid transparent;
       border-radius: 4px;
       font-family: 'Share Tech Mono', monospace;
@@ -163,35 +269,28 @@
       letter-spacing: 2px;
       font-weight: bold;
       cursor: pointer;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0,0,0,0.6);
       text-transform: uppercase;
       transition: all 0.25s ease;
       user-select: none;
     }
 
-    .color-button:hover {
-      transform: translateY(-3px);
-      filter: brightness(1.4);
-    }
+    .color-button:hover      { transform: translateY(-3px); filter: brightness(1.4); }
+    .color-button.active-color { transform: translateY(-3px); filter: brightness(1.6); }
 
-    .color-button.active-color {
-      transform: translateY(-3px);
-      filter: brightness(1.6);
-    }
-
-    .green  { color: #00ff00; border-color: rgba(0,255,0,0.4);   box-shadow: 0 0 12px rgba(0,255,0,0.4); }
-    .red    { color: #ff3333; border-color: rgba(255,50,50,0.4);  box-shadow: 0 0 12px rgba(255,50,50,0.4); }
-    .blue   { color: #00bfff; border-color: rgba(0,191,255,0.4);  box-shadow: 0 0 12px rgba(0,191,255,0.4); }
-    .purple { color: #cc55ff; border-color: rgba(180,0,255,0.4);  box-shadow: 0 0 12px rgba(180,0,255,0.4); }
-    .gold   { color: #ffd700; border-color: rgba(255,215,0,0.4);  box-shadow: 0 0 12px rgba(255,215,0,0.4); }
-    .rainbow { 
-      background: linear-gradient(90deg, #ff000033, #ff800033, #ffff0033, #00ff0033, #0080ff33, #8000ff33);
+    .green  { color: #00ff00; border-color: rgba(0,255,0,0.4);   box-shadow: 0 0 10px rgba(0,255,0,0.3); }
+    .red    { color: #ff3333; border-color: rgba(255,50,50,0.4);  box-shadow: 0 0 10px rgba(255,50,50,0.3); }
+    .blue   { color: #00bfff; border-color: rgba(0,191,255,0.4);  box-shadow: 0 0 10px rgba(0,191,255,0.3); }
+    .purple { color: #cc55ff; border-color: rgba(180,0,255,0.4);  box-shadow: 0 0 10px rgba(180,0,255,0.3); }
+    .gold   { color: #ffd700; border-color: rgba(255,215,0,0.4);  box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+    .rainbow {
+      background: linear-gradient(90deg,#ff000022,#ff800022,#ffff0022,#00ff0022,#0080ff22,#8000ff22);
       border-color: rgba(255,255,255,0.3);
       color: #fff;
-      box-shadow: 0 0 12px rgba(255,255,255,0.3);
+      box-shadow: 0 0 10px rgba(255,255,255,0.2);
     }
 
-    /* ── Now Playing indicator ── */
+    /* Now playing */
     #now-playing {
       position: fixed;
       bottom: 70px;
@@ -201,17 +300,15 @@
       letter-spacing: 3px;
       color: var(--accent);
       opacity: 0;
-      transition: opacity 0.5s ease;
+      transition: opacity 0.5s, color 0.5s;
       z-index: 100;
       text-transform: uppercase;
       white-space: nowrap;
+      pointer-events: none;
     }
 
-    #now-playing.visible {
-      opacity: 0.7;
-    }
+    #now-playing.visible { opacity: 0.7; }
 
-    /* Pulsing dot */
     #now-playing::before {
       content: '● ';
       color: #00ff9f;
@@ -220,264 +317,440 @@
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.2; }
+      50%       { opacity: 0.2; }
+    }
+
+    /* Keyboard hints */
+    #key-hints {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      opacity: 0.2;
+      z-index: 100;
+      text-align: right;
+      line-height: 2;
+      pointer-events: none;
+      transition: color 0.5s;
     }
   </style>
 </head>
 <body>
 
-  <div id="hq-badge">
-    <div class="title">Kilo HQ // Focus Station</div>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<div id="hq-badge">
+  <div class="title">Kilo HQ // Focus Station</div>
+</div>
+
+<div id="music-controls">
+  <button class="music-button" id="btn-gamma" onclick="toggleTrack('gamma')">40Hz Gamma</button>
+  <button class="music-button" id="btn-alpha" onclick="toggleTrack('alpha')">Alpha Wave</button>
+  <button class="music-button" id="btn-theta" onclick="toggleTrack('theta')">Theta Drift</button>
+  <button class="music-button" id="btn-deep"  onclick="toggleTrack('deep')">Deep Focus</button>
+  <div id="vol-wrap">
+    <label>VOL</label>
+    <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.4" oninput="setVolume(this.value)">
   </div>
+</div>
 
-  <div id="music-controls">
-    <button class="music-button" id="btn-gamma"   onclick="toggleTrack('gamma')">40Hz Gamma</button>
-    <button class="music-button" id="btn-alpha"   onclick="toggleTrack('alpha')">Alpha Wave</button>
-    <button class="music-button" id="btn-theta"   onclick="toggleTrack('theta')">Theta Drift</button>
-    <button class="music-button" id="btn-deep"    onclick="toggleTrack('deep')">Deep Focus</button>
-    <div id="vol-wrap">
-      <label>VOL</label>
-      <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.4" oninput="setVolume(this.value)">
-    </div>
+<div id="right-panel">
+  <div id="clock">00:00:00</div>
+  <div id="pomodoro" onclick="pomodoroClick()" ondblclick="pomodoroReset()">
+    <svg width="64" height="64" viewBox="0 0 64 64">
+      <circle id="pomo-ring-bg" cx="32" cy="32" r="28"/>
+      <circle id="pomo-ring"    cx="32" cy="32" r="28"/>
+    </svg>
+    <div id="pomo-time">25:00</div>
+    <div id="pomo-mode">FOCUS</div>
+    <div id="pomo-hint">click · dbl=reset</div>
   </div>
+</div>
 
-  <canvas id="matrix-canvas"></canvas>
+<canvas id="matrix-canvas"></canvas>
 
-  <div id="now-playing"></div>
+<div id="now-playing"></div>
 
-  <div id="color-buttons">
-    <button class="color-button blue   active-color" data-color="#00bfff">Blue</button>
-    <button class="color-button green"               data-color="#00ff00">Green</button>
-    <button class="color-button red"                 data-color="#ff3333">Red</button>
-    <button class="color-button purple"              data-color="#cc55ff">Purple</button>
-    <button class="color-button gold"                data-color="#ffd700">Gold</button>
-    <button class="color-button rainbow">🌈</button>
-  </div>
+<div id="color-buttons">
+  <button class="color-button blue active-color" data-color="#00bfff" data-rgb="0,191,255">Blue</button>
+  <button class="color-button green"             data-color="#00ff00" data-rgb="0,255,0">Green</button>
+  <button class="color-button red"               data-color="#ff3333" data-rgb="255,51,51">Red</button>
+  <button class="color-button purple"            data-color="#cc55ff" data-rgb="204,85,255">Purple</button>
+  <button class="color-button gold"              data-color="#ffd700" data-rgb="255,215,0">Gold</button>
+  <button class="color-button rainbow">🌈</button>
+</div>
 
-  <script>
-    // ─────────────────────────────────────────────
-    //  MATRIX RAIN
-    // ─────────────────────────────────────────────
-    const canvas = document.getElementById('matrix-canvas');
-    const ctx    = canvas.getContext('2d');
-    const fontSize = 14;
-    const chars = "フィリップクフィアトコフスキKWIATKOWSKIPHILIP".split("");
+<div id="key-hints">
+  [space] play/stop<br>
+  [1-4] switch track<br>
+  [c] cycle color
+</div>
 
-    let drops = [];
-    let matrixColor  = "#00bfff";
-    let enableRainbow = false;
+<script>
+// ══════════════════════════════════════════════════════
+//  MATRIX RAIN
+// ══════════════════════════════════════════════════════
+const canvas = document.getElementById('matrix-canvas');
+const ctx    = canvas.getContext('2d');
+const fontSize = 14;
+const chars = "フィリップクフィアトコフスキKWIATKOWSKIPHILIP".split("");
 
-    function setupCanvas() {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
-      const cols = Math.floor(canvas.width / fontSize);
-      drops = Array.from({ length: cols }, () => Math.random() * -50);
-    }
+let drops        = [];
+let matrixColor  = "#00bfff";
+let enableRainbow = false;
+let rainbowHue   = 0;
+let beatIntensity = 0;
+let bursts       = [];
 
-    setupCanvas();
-    window.addEventListener('resize', setupCanvas);
+function setupCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  drops = Array.from({ length: Math.floor(canvas.width / fontSize) }, () => Math.random() * -80);
+}
 
-    function draw() {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = fontSize + "px 'Share Tech Mono', monospace";
+setupCanvas();
+window.addEventListener('resize', setupCanvas);
 
-      for (let i = 0; i < drops.length; i++) {
-        const text = chars[Math.floor(Math.random() * chars.length)];
-
-        if (enableRainbow) {
-          ctx.fillStyle = `hsl(${Math.floor(Math.random() * 360)}, 100%, 55%)`;
-        } else {
-          // bright lead character
-          ctx.fillStyle = drops[i] * fontSize < canvas.height * 0.3
-            ? '#ffffff'
-            : matrixColor;
-        }
-
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        drops[i]++;
-      }
-    }
-
-    setInterval(draw, 50);
-
-    // ─────────────────────────────────────────────
-    //  COLOR BUTTONS
-    // ─────────────────────────────────────────────
-    document.querySelectorAll('.color-button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.color-button').forEach(b => b.classList.remove('active-color'));
-        btn.classList.add('active-color');
-
-        if (btn.classList.contains('rainbow')) {
-          enableRainbow = true;
-        } else {
-          enableRainbow = false;
-          matrixColor   = btn.dataset.color;
-          // update CSS accent var to match
-          document.documentElement.style.setProperty('--accent', btn.dataset.color);
-          document.documentElement.style.setProperty('--glow', btn.dataset.color + '99');
-        }
-      });
+// ── Click burst ────────────────────────────────────────
+canvas.addEventListener('click', e => {
+  const count = 26;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
+    const speed = 2.5 + Math.random() * 5.5;
+    bursts.push({
+      x: e.clientX, y: e.clientY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      char: chars[Math.floor(Math.random() * chars.length)],
+      life: 1.0,
+      decay: 0.016 + Math.random() * 0.024
     });
+  }
+});
 
-    // ─────────────────────────────────────────────
-    //  WEB AUDIO ENGINE — no MP3 files needed
-    // ─────────────────────────────────────────────
-    let audioCtx    = null;
-    let masterGain  = null;
-    let activeNodes = [];  // currently running oscillators / nodes
-    let activeTrack = null;
-    let masterVolume = 0.4;
+// ── Waveform visualizer ────────────────────────────────
+function drawVisualizer() {
+  if (!analyser || !activeTrack || !waveData) return;
+  analyser.getByteTimeDomainData(waveData);
 
-    function getCtx() {
-      if (!audioCtx) {
-        audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioCtx.createGain();
-        masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
-        masterGain.connect(audioCtx.destination);
-      }
-      return audioCtx;
+  ctx.save();
+  ctx.beginPath();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = enableRainbow
+    ? `hsla(${rainbowHue}, 100%, 65%, 0.45)`
+    : matrixColor + '55';
+
+  const sliceWidth = canvas.width / waveData.length;
+  let x = 0;
+  const yBase = canvas.height - 55;
+
+  for (let i = 0; i < waveData.length; i++) {
+    const v = waveData[i] / 128.0;
+    const y = yBase + (v - 1) * 38;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    x += sliceWidth;
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Main draw loop ─────────────────────────────────────
+function draw() {
+  const speedBoost = 1 + beatIntensity * 1.8;
+
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = fontSize + "px 'Share Tech Mono', monospace";
+
+  for (let i = 0; i < drops.length; i++) {
+    const text = chars[Math.floor(Math.random() * chars.length)];
+
+    if (enableRainbow) {
+      ctx.fillStyle = `hsl(${(rainbowHue + i * 3) % 360}, 100%, 55%)`;
+    } else {
+      ctx.fillStyle = drops[i] < 3 ? '#ffffff' : matrixColor;
     }
 
-    function stopAll() {
-      const now = audioCtx ? audioCtx.currentTime : 0;
-      activeNodes.forEach(n => {
-        try {
-          n.gain.gain.linearRampToValueAtTime(0, now + 0.8);
-          n.osc.stop(now + 0.8);
-        } catch(e) {}
-      });
-      activeNodes = [];
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i] += speedBoost * (0.18 + Math.random() * 0.12);
+  }
+
+  if (enableRainbow) rainbowHue = (rainbowHue + 0.5) % 360;
+
+  // Burst particles
+  ctx.font = (fontSize + 2) + "px 'Share Tech Mono', monospace";
+  for (let i = bursts.length - 1; i >= 0; i--) {
+    const p = bursts[i];
+    const alpha = Math.floor(p.life * 255).toString(16).padStart(2, '0');
+    ctx.fillStyle = enableRainbow
+      ? `hsla(${(rainbowHue + i * 15) % 360},100%,60%,${p.life})`
+      : matrixColor + alpha;
+    ctx.fillText(p.char, p.x, p.y);
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy += 0.15;
+    p.life -= p.decay;
+    if (p.life <= 0) bursts.splice(i, 1);
+  }
+
+  drawVisualizer();
+  requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+
+// ══════════════════════════════════════════════════════
+//  COLOR BUTTONS
+// ══════════════════════════════════════════════════════
+const colorBtns  = document.querySelectorAll('.color-button');
+const colorOrder = ['blue','green','red','purple','gold','rainbow'];
+let   colorIndex = 0;
+
+colorBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    colorBtns.forEach(b => b.classList.remove('active-color'));
+    btn.classList.add('active-color');
+    colorIndex = colorOrder.indexOf([...btn.classList].find(c => colorOrder.includes(c)));
+
+    if (btn.classList.contains('rainbow')) {
+      enableRainbow = true;
+    } else {
+      enableRainbow = false;
+      matrixColor   = btn.dataset.color;
+      const rgb     = btn.dataset.rgb;
+      document.documentElement.style.setProperty('--accent',     matrixColor);
+      document.documentElement.style.setProperty('--accent-rgb', rgb);
     }
+  });
+});
 
-    // Helper: create one oscillator with its own gain routed to masterGain
-    function makeOsc(freq, type = 'sine', gainVal = 0.4, panVal = 0) {
-      const ctx  = getCtx();
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const pan  = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+// ══════════════════════════════════════════════════════
+//  WEB AUDIO ENGINE
+// ══════════════════════════════════════════════════════
+let audioCtx    = null;
+let masterGain  = null;
+let analyser    = null;
+let waveData    = null;
+let activeNodes = [];
+let activeTrack = null;
+let masterVolume = 0.4;
 
-      osc.type      = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + 1.2); // fade in
+function getCtx() {
+  if (!audioCtx) {
+    audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    analyser   = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    waveData   = new Uint8Array(analyser.fftSize);
 
-      if (pan) {
-        pan.pan.setValueAtTime(panVal, ctx.currentTime);
-        osc.connect(gain);
-        gain.connect(pan);
-        pan.connect(masterGain);
-      } else {
-        osc.connect(gain);
-        gain.connect(masterGain);
-      }
+    masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
+    masterGain.connect(analyser);
+    analyser.connect(audioCtx.destination);
 
-      osc.start();
-      return { osc, gain };
-    }
+    // Beat reactivity: poll amplitude
+    setInterval(() => {
+      if (!analyser || !activeTrack) { beatIntensity = 0; return; }
+      const fd = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(fd);
+      const avg = fd.reduce((a, b) => a + b, 0) / fd.length / 255;
+      beatIntensity = Math.min(avg * 10, 1);
+    }, 100);
+  }
+  return audioCtx;
+}
 
-    // ── Track definitions ──────────────────────────────────────────
+function makeOsc(freq, type, gainVal, panVal) {
+  const c    = getCtx();
+  const osc  = c.createOscillator();
+  const gain = c.createGain();
+  const pan  = c.createStereoPanner ? c.createStereoPanner() : null;
 
-    function play_gamma() {
-      // 40Hz binaural: 200Hz left, 240Hz right → brain perceives 40Hz gamma beat
-      // Plus a gentle 40Hz sub pulse for atmosphere
-      const left  = makeOsc(200, 'sine', 0.35, -1);
-      const right = makeOsc(240, 'sine', 0.35,  1);
-      const sub   = makeOsc(40,  'sine', 0.12,  0);
-      activeNodes = [left, right, sub];
-    }
+  osc.type = type || 'sine';
+  osc.frequency.setValueAtTime(freq, c.currentTime);
+  gain.gain.setValueAtTime(0, c.currentTime);
+  gain.gain.linearRampToValueAtTime(gainVal || 0.35, c.currentTime + 1.5);
 
-    function play_alpha() {
-      // Alpha binaural 10Hz: 210Hz left, 220Hz right
-      // Layered with a soft 432Hz carrier for warmth
-      const left    = makeOsc(210, 'sine', 0.35, -1);
-      const right   = makeOsc(220, 'sine', 0.35,  1);
-      const carrier = makeOsc(432, 'sine', 0.08,  0);
-      activeNodes   = [left, right, carrier];
-    }
+  if (pan) {
+    pan.pan.setValueAtTime(panVal || 0, c.currentTime);
+    osc.connect(gain); gain.connect(pan); pan.connect(masterGain);
+  } else {
+    osc.connect(gain); gain.connect(masterGain);
+  }
+  osc.start();
+  return { osc, gain };
+}
 
-    function play_theta() {
-      // Theta binaural 6Hz: 204Hz left, 210Hz right
-      // Deep drift — slightly detuned ambient layer
-      const left  = makeOsc(204, 'sine', 0.35, -1);
-      const right = makeOsc(210, 'sine', 0.35,  1);
-      const drone = makeOsc(528, 'sine', 0.06,  0);
-      activeNodes = [left, right, drone];
-    }
+function stopAll() {
+  const now = audioCtx ? audioCtx.currentTime : 0;
+  activeNodes.forEach(n => {
+    try {
+      n.gain.gain.linearRampToValueAtTime(0, now + 0.8);
+      n.osc.stop(now + 0.9);
+    } catch(e) {}
+  });
+  activeNodes = [];
+}
 
-    function play_deep() {
-      // Deep focus: 14Hz binaural (low beta/high alpha boundary)
-      // 174Hz left, 188Hz right — grounding frequency
-      const left   = makeOsc(174, 'sine', 0.38, -1);
-      const right  = makeOsc(188, 'sine', 0.38,  1);
-      const ground = makeOsc(174, 'sine', 0.10,  0); // mono ground
-      activeNodes  = [left, right, ground];
-    }
+// Track definitions
+const trackDefs = {
+  gamma: () => [makeOsc(200,'sine',0.35,-1), makeOsc(240,'sine',0.35,1),  makeOsc(40,'sine',0.12,0)],
+  alpha: () => [makeOsc(210,'sine',0.35,-1), makeOsc(220,'sine',0.35,1),  makeOsc(432,'sine',0.08,0)],
+  theta: () => [makeOsc(204,'sine',0.35,-1), makeOsc(210,'sine',0.35,1),  makeOsc(528,'sine',0.06,0)],
+  deep:  () => [makeOsc(174,'sine',0.38,-1), makeOsc(188,'sine',0.38,1),  makeOsc(174,'sine',0.10,0)],
+};
 
-    // ── Toggle logic ───────────────────────────────────────────────
+const trackNames = {
+  gamma: '40Hz Gamma Beat',
+  alpha: 'Alpha Wave 10Hz',
+  theta: 'Theta Drift 6Hz',
+  deep:  'Deep Focus 14Hz',
+};
 
-    const trackFns = {
-      gamma: play_gamma,
-      alpha: play_alpha,
-      theta: play_theta,
-      deep:  play_deep,
-    };
+function toggleTrack(id) {
+  getCtx();
+  if (activeTrack === id) {
+    stopAll(); activeTrack = null;
+    setNowPlaying(null);
+    document.querySelectorAll('.music-button').forEach(b => b.classList.remove('active'));
+    return;
+  }
+  stopAll();
+  activeTrack  = id;
+  activeNodes  = trackDefs[id]();
+  document.querySelectorAll('.music-button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + id).classList.add('active');
+  setNowPlaying(trackNames[id]);
+}
 
-    const trackNames = {
-      gamma: '40Hz Gamma Beat',
-      alpha: 'Alpha Wave 10Hz',
-      theta: 'Theta Drift 6Hz',
-      deep:  'Deep Focus 14Hz',
-    };
+function setVolume(v) {
+  masterVolume = parseFloat(v);
+  if (masterGain) masterGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.1);
+}
 
-    function toggleTrack(id) {
-      getCtx();
+// ══════════════════════════════════════════════════════
+//  NOW PLAYING
+// ══════════════════════════════════════════════════════
+const npEl = document.getElementById('now-playing');
 
-      // If same track → stop
-      if (activeTrack === id) {
-        stopAll();
-        activeTrack = null;
-        setNowPlaying(null);
-        document.querySelectorAll('.music-button').forEach(b => b.classList.remove('active'));
-        return;
-      }
+function setNowPlaying(name) {
+  if (!name) { npEl.classList.remove('visible'); npEl.textContent = ''; return; }
+  npEl.textContent = name;
+  npEl.classList.add('visible');
+}
 
-      // Switch track
-      stopAll();
-      activeTrack = id;
-      trackFns[id]();
+// ══════════════════════════════════════════════════════
+//  CLOCK
+// ══════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    [now.getHours(), now.getMinutes(), now.getSeconds()]
+      .map(n => String(n).padStart(2,'0')).join(':');
+}
+setInterval(updateClock, 1000);
+updateClock();
 
-      document.querySelectorAll('.music-button').forEach(b => b.classList.remove('active'));
-      document.getElementById('btn-' + id).classList.add('active');
-      setNowPlaying(trackNames[id]);
-    }
+// ══════════════════════════════════════════════════════
+//  POMODORO
+// ══════════════════════════════════════════════════════
+const FOCUS_TIME   = 25 * 60;
+const BREAK_TIME   = 5  * 60;
+const CIRCUMFERENCE = 2 * Math.PI * 28;
 
-    function setVolume(v) {
-      masterVolume = parseFloat(v);
-      if (masterGain) {
-        masterGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.1);
-      }
-    }
+const pomoRing  = document.getElementById('pomo-ring');
+const pomoTime  = document.getElementById('pomo-time');
+const pomoMode  = document.getElementById('pomo-mode');
 
-    // ── Now playing label ──────────────────────────────────────────
-    const npEl = document.getElementById('now-playing');
-    let npTimeout;
+pomoRing.style.strokeDasharray  = CIRCUMFERENCE;
+pomoRing.style.strokeDashoffset = 0;
 
-    function setNowPlaying(name) {
-      clearTimeout(npTimeout);
-      if (!name) {
-        npEl.classList.remove('visible');
-        return;
-      }
-      npEl.textContent = name;
-      // re-add the ::before via a trick — just keep textContent clean
-      npEl.classList.add('visible');
-    }
-  </script>
+let pomoTotal     = FOCUS_TIME;
+let pomoRemaining = FOCUS_TIME;
+let pomoRunning   = false;
+let pomoIsBreak   = false;
+let pomoInterval  = null;
+
+function updatePomodoroUI() {
+  const m = Math.floor(pomoRemaining / 60);
+  const s = pomoRemaining % 60;
+  pomoTime.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  pomoRing.style.strokeDashoffset = CIRCUMFERENCE * (1 - pomoRemaining / pomoTotal);
+  pomoMode.textContent  = pomoIsBreak ? 'BREAK' : 'FOCUS';
+  pomoRing.style.stroke = pomoIsBreak ? '#00ff9f' : 'var(--accent)';
+}
+
+function pomodoroTick() {
+  if (pomoRemaining <= 0) {
+    pomoIsBreak   = !pomoIsBreak;
+    pomoTotal     = pomoIsBreak ? BREAK_TIME : FOCUS_TIME;
+    pomoRemaining = pomoTotal;
+    triggerGlitch(); // notify on mode switch
+  } else {
+    pomoRemaining--;
+  }
+  updatePomodoroUI();
+}
+
+function pomodoroClick() {
+  if (pomoRunning) {
+    clearInterval(pomoInterval);
+    pomoRunning = false;
+  } else {
+    pomoInterval = setInterval(pomodoroTick, 1000);
+    pomoRunning  = true;
+  }
+}
+
+function pomodoroReset() {
+  clearInterval(pomoInterval);
+  pomoRunning = false; pomoIsBreak = false;
+  pomoTotal = FOCUS_TIME; pomoRemaining = FOCUS_TIME;
+  updatePomodoroUI();
+}
+
+updatePomodoroUI();
+
+// ══════════════════════════════════════════════════════
+//  GLITCH EFFECT
+// ══════════════════════════════════════════════════════
+const badge = document.getElementById('hq-badge');
+
+function triggerGlitch() {
+  badge.classList.remove('glitching');
+  void badge.offsetWidth;
+  badge.classList.add('glitching');
+  setTimeout(() => badge.classList.remove('glitching'), 500);
+}
+
+(function scheduleGlitch() {
+  setTimeout(() => { triggerGlitch(); scheduleGlitch(); }, 8000 + Math.random() * 14000);
+})();
+
+// ══════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  switch(e.key) {
+    case ' ':
+      e.preventDefault();
+      toggleTrack(activeTrack || 'gamma');
+      break;
+    case '1': toggleTrack('gamma'); break;
+    case '2': toggleTrack('alpha'); break;
+    case '3': toggleTrack('theta'); break;
+    case '4': toggleTrack('deep');  break;
+    case 'c': case 'C':
+      colorIndex = (colorIndex + 1) % colorOrder.length;
+      document.querySelector(`.color-button.${colorOrder[colorIndex]}`).click();
+      break;
+  }
+});
+</script>
 </body>
 </html>
