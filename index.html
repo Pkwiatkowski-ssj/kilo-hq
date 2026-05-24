@@ -421,21 +421,24 @@ canvas.addEventListener('click', e => {
 });
 
 // ── Waveform visualizer ────────────────────────────────
+// Pre-allocate pts array once — reused every frame
+const VIZ_STEP    = 8;
+const vizPtsCount = Math.ceil(2048 / VIZ_STEP);
+const vizPts      = Array.from({ length: vizPtsCount }, () => ({ x: 0, y: 0 }));
+
 function drawVisualizer() {
   if (!analyser || !activeTrack || !waveData) return;
   analyser.getByteTimeDomainData(waveData);
 
-  const color  = enableRainbow ? `hsl(${rainbowHue},100%,65%)` : matrixColor;
-  const yBase  = canvas.height - 55;
-  const step   = 8; // sample every 8th point — much cleaner
+  const color = enableRainbow ? `hsl(${rainbowHue},100%,65%)` : matrixColor;
+  const yBase = canvas.height - 55;
 
-  // Build downsampled points
-  const pts = [];
-  for (let i = 0; i < waveData.length; i += step) {
-    pts.push({
-      x: (i / waveData.length) * canvas.width,
-      y: yBase + (waveData[i] / 128.0 - 1) * 45
-    });
+  // Fill pre-allocated points in place
+  let p = 0;
+  for (let i = 0; i < waveData.length; i += VIZ_STEP) {
+    vizPts[p].x = (i / waveData.length) * canvas.width;
+    vizPts[p].y = yBase + (waveData[i] / 128.0 - 1) * 45;
+    p++;
   }
 
   ctx.save();
@@ -445,17 +448,19 @@ function drawVisualizer() {
   ctx.shadowBlur  = 6;
   ctx.shadowColor = color;
 
-  // Smooth bezier curves through midpoints
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i + 1].x) / 2;
-    const my = (pts[i].y + pts[i + 1].y) / 2;
-    ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+  ctx.moveTo(vizPts[0].x, vizPts[0].y);
+  for (let i = 1; i < p - 1; i++) {
+    const mx = (vizPts[i].x + vizPts[i + 1].x) / 2;
+    const my = (vizPts[i].y + vizPts[i + 1].y) / 2;
+    ctx.quadraticCurveTo(vizPts[i].x, vizPts[i].y, mx, my);
   }
-  ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+  ctx.lineTo(vizPts[p - 1].x, vizPts[p - 1].y);
   ctx.stroke();
   ctx.restore();
 }
+
+// Set font once — never changes so no need to set every frame
+ctx.font = fontSize + "px 'Share Tech Mono', monospace";
 
 // ── Main draw loop ─────────────────────────────────────
 function draw() {
@@ -463,7 +468,6 @@ function draw() {
 
   ctx.fillStyle = "rgba(0,0,0,0.05)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = fontSize + "px 'Share Tech Mono', monospace";
 
   // Update ripples
   for (let r = ripples.length - 1; r >= 0; r--) {
@@ -479,19 +483,22 @@ function draw() {
     // Check if this column is inside any ripple ring
     let rippleBoost = 0;
     for (const r of ripples) {
-      const dist      = Math.sqrt((cx - r.x) ** 2 + (cy - r.y) ** 2);
       const ringWidth = 55;
-      const diff      = Math.abs(dist - r.radius);
+      // Cheap bounding box check first — skips sqrt for most columns
+      if (Math.abs(cx - r.x) > r.radius + ringWidth) continue;
+      if (Math.abs(cy - r.y) > r.radius + ringWidth) continue;
+      const dist = Math.sqrt((cx - r.x) ** 2 + (cy - r.y) ** 2);
+      const diff = Math.abs(dist - r.radius);
       if (diff < ringWidth) {
-        const fade = 1 - r.radius / r.maxRadius;       // dims as it expands
-        const edge = 1 - diff / ringWidth;              // sharp at ring center
+        const fade = 1 - r.radius / r.maxRadius;
+        const edge = 1 - diff / ringWidth;
         rippleBoost = Math.max(rippleBoost, edge * fade);
       }
     }
 
     if (rippleBoost > 0.01) {
       // Blend from normal color to white based on boost strength
-      ctx.fillStyle = `rgba(255,255,255,${rippleBoost.toFixed(2)})`;
+      ctx.fillStyle = `rgba(255,255,255,${rippleBoost})`;
     } else if (enableRainbow) {
       ctx.fillStyle = `hsl(${(rainbowHue + i * 3) % 360}, 100%, 55%)`;
     } else {
@@ -559,13 +566,14 @@ function getCtx() {
     masterGain.connect(analyser);
     analyser.connect(audioCtx.destination);
 
-    // Beat reactivity: poll amplitude
+    // Beat reactivity: poll amplitude — array cached, not reallocated each tick
+    const freqBuf = new Uint8Array(analyser.frequencyBinCount);
     setInterval(() => {
       if (!analyser || !activeTrack) { beatIntensity = 0; return; }
-      const fd = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(fd);
-      const avg = fd.reduce((a, b) => a + b, 0) / fd.length / 255;
-      beatIntensity = Math.min(avg * 10, 1);
+      analyser.getByteFrequencyData(freqBuf);
+      let sum = 0;
+      for (let i = 0; i < freqBuf.length; i++) sum += freqBuf[i];
+      beatIntensity = Math.min((sum / freqBuf.length / 255) * 10, 1);
     }, 100);
   }
   return audioCtx;
